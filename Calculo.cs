@@ -1,17 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CalculadoraForms
 {
     internal class Calculo
     {
         //atributos
-        private double resultado;
+        private decimal resultado;
         //propiedades
-        public double Resultado
+        public decimal Resultado
         {
             get { return resultado; }
             set { resultado = value; }
@@ -19,29 +15,24 @@ namespace CalculadoraForms
         //constructor
         public Calculo()
         {
-            this.resultado = 0;
+            this.resultado = 0m;
         }
-        public Calculo(double resultado)
+        public Calculo(decimal resultado)
         {
-                this.resultado = resultado;
+            this.resultado = resultado;
         }
         //metodos
-        public double RealizarOperacion(double num1, double num2, string operador)
+        public decimal RealizarOperacion(decimal num1, decimal num2, string operador)
         {
             Calculadora calculadora = new Calculadora();
-            switch (operador)
+            return operador switch
             {
-                case "+":
-                    return calculadora.Sumar(num1, num2);
-                case "-":
-                    return calculadora.Restar(num1, num2);
-                case "*":
-                    return calculadora.Multiplicar(num1, num2);
-                case "/":
-                    return calculadora.Dividir(num1, num2);
-                default:
-                    throw new InvalidOperationException("Operador no válido.");
-            }
+                "+" => calculadora.Sumar(num1, num2),
+                "-" => calculadora.Restar(num1, num2),
+                "*" => calculadora.Multiplicar(num1, num2),
+                "/" => calculadora.Dividir(num1, num2),
+                _ => throw new InvalidOperationException("Operador no válido."),
+            };
         }
     }
 }

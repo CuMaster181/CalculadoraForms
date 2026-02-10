@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Windows.Forms;
 
 namespace CalculadoraForms
@@ -7,9 +8,10 @@ namespace CalculadoraForms
     {
         private Calculadora calculadora = new Calculadora();
         private Historial historial = new Historial();
-        private double? firstNumber = null;
+        private decimal? firstNumber = null;
         private string operador = "";
         private bool nuevaEntrada = true;
+        private readonly string decimalSep = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
 
         public Form1()
         {
@@ -36,13 +38,13 @@ namespace CalculadoraForms
         {
             if (nuevaEntrada)
             {
-                txtDisplay.Text = "0,";
+                txtDisplay.Text = "0" + decimalSep;
                 nuevaEntrada = false;
                 return;
             }
 
-            if (!txtDisplay.Text.Contains(","))
-                txtDisplay.Text += ",";
+            if (!txtDisplay.Text.Contains(decimalSep))
+                txtDisplay.Text += decimalSep;
         }
 
         private void ButtonOperator_Click(object sender, EventArgs e)
@@ -52,7 +54,7 @@ namespace CalculadoraForms
 
             try
             {
-                if (double.TryParse(txtDisplay.Text, out double value))
+                if (decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal value))
                 {
                     if (firstNumber == null)
                     {
@@ -60,10 +62,9 @@ namespace CalculadoraForms
                     }
                     else if (!string.IsNullOrEmpty(operador) && !nuevaEntrada)
                     {
-                        // encadenar operaciones (ej: 2 + 3 + 4)
-                        double result = RealizarOperacion((double)firstNumber, value, operador);
+                        decimal result = RealizarOperacion((decimal)firstNumber, value, operador);
                         firstNumber = result;
-                        txtDisplay.Text = result.ToString();
+                        txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
                     }
                 }
 
@@ -92,15 +93,24 @@ namespace CalculadoraForms
                 if (firstNumber == null || string.IsNullOrEmpty(operador))
                     return;
 
-                if (!double.TryParse(txtDisplay.Text, out double secondNumber))
+                if (!decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal secondNumber))
                     return;
 
-                double result = RealizarOperacion((double)firstNumber, secondNumber, operador);
+                decimal result;
+                if (operador == "pow")
+                {
+                    result = calculadora.Potencia((decimal)firstNumber, secondNumber);
+                }
+                else
+                {
+                    result = RealizarOperacion((decimal)firstNumber, secondNumber, operador);
+                }
+
                 string entry = $"{firstNumber} {operador} {secondNumber} = {result}";
                 historial.AgregarOperacion(entry);
                 lstHistory.Items.Insert(0, entry);
 
-                txtDisplay.Text = result.ToString();
+                txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
                 firstNumber = null;
                 operador = "";
                 nuevaEntrada = true;
@@ -117,9 +127,8 @@ namespace CalculadoraForms
             }
         }
 
-        private double RealizarOperacion(double num1, double num2, string op)
+        private decimal RealizarOperacion(decimal num1, decimal num2, string op)
         {
-            // Usa Calculo para + - * /
             var calculo = new Calculo();
             return op switch
             {
@@ -131,10 +140,7 @@ namespace CalculadoraForms
             };
         }
 
-        private void BtnClear_Click(object sender, EventArgs e)
-        {
-            ResetCalculator();
-        }
+        private void BtnClear_Click(object sender, EventArgs e) => ResetCalculator();
 
         private void ResetCalculator()
         {
@@ -146,45 +152,43 @@ namespace CalculadoraForms
 
         private void BtnSign_Click(object sender, EventArgs e)
         {
-            if (double.TryParse(txtDisplay.Text, out double value))
+            if (decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal value))
             {
-                double inverted = calculadora.InvertirSigno(value);
-                txtDisplay.Text = inverted.ToString();
+                decimal inverted = calculadora.InvertirSigno(value);
+                txtDisplay.Text = inverted.ToString(CultureInfo.CurrentCulture);
             }
         }
 
         private void BtnPercent_Click(object sender, EventArgs e)
         {
-            if (firstNumber != null && double.TryParse(txtDisplay.Text, out double value))
+            if (firstNumber != null && decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal value))
             {
-                // porcentaje relativo al primer número: (first * value) / 100
-                double result = calculadora.Porcentaje((double)firstNumber, value);
-                txtDisplay.Text = result.ToString();
+                decimal result = calculadora.Porcentaje((decimal)firstNumber, value);
+                txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
                 string entry = $"{firstNumber} % {value} = {result}";
                 historial.AgregarOperacion(entry);
                 lstHistory.Items.Insert(0, entry);
                 nuevaEntrada = true;
             }
-            else if (double.TryParse(txtDisplay.Text, out double single))
+            else if (decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal single))
             {
-                // porcentaje simple de 100
-                double result = calculadora.Porcentaje(single, 100);
-                txtDisplay.Text = result.ToString();
+                decimal result = calculadora.Porcentaje(single, 100m);
+                txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
                 nuevaEntrada = true;
             }
         }
 
         private void BtnSqrt_Click(object sender, EventArgs e)
         {
-            if (double.TryParse(txtDisplay.Text, out double value))
+            if (decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal value))
             {
                 try
                 {
-                    double result = calculadora.Raiz(value);
+                    decimal result = calculadora.Raiz(value);
                     string entry = $"?({value}) = {result}";
                     historial.AgregarOperacion(entry);
                     lstHistory.Items.Insert(0, entry);
-                    txtDisplay.Text = result.ToString();
+                    txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
                     nuevaEntrada = true;
                 }
                 catch (Exception ex)
@@ -196,8 +200,7 @@ namespace CalculadoraForms
 
         private void BtnPow_Click(object sender, EventArgs e)
         {
-            // Preparar potencia: guarda el primer número y establece operador "pow"
-            if (double.TryParse(txtDisplay.Text, out double value))
+            if (decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal value))
             {
                 firstNumber = value;
                 operador = "pow";

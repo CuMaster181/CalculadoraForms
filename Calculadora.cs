@@ -1,18 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CalculadoraForms
 {
     internal class Calculadora
     {
         //atributos
-        private double numeros;
+        private decimal numeros;
         private string operador;
         //propiedades
-        public double Numeros
+        public decimal Numeros
         {
             get { return numeros; }
             set { numeros = value; }
@@ -25,31 +21,21 @@ namespace CalculadoraForms
         //constructor
         public Calculadora()
         {
-            this.numeros = 0;
+            this.numeros = 0m;
             this.operador = "";
         }
-        public Calculadora(double numeros, string operador)
+        public Calculadora(decimal numeros, string operador)
         {
             this.numeros = numeros;
             this.operador = operador;
-
         }
         //metodos
-        public double Sumar(double num1, double num2)
+        public decimal Sumar(decimal num1, decimal num2) => num1 + num2;
+        public decimal Restar(decimal num1, decimal num2) => num1 - num2;
+        public decimal Multiplicar(decimal num1, decimal num2) => num1 * num2;
+        public decimal Dividir(decimal num1, decimal num2)
         {
-                return num1 + num2;
-        }
-        public double Restar(double num1, double num2)
-        {
-                return num1 - num2;
-        }
-        public double Multiplicar(double num1, double num2)
-        {
-                return num1 * num2;
-        }
-        public double Dividir(double num1, double num2)
-        {
-            if (num2 != 0)
+            if (num2 != 0m)
             {
                 return num1 / num2;
             }
@@ -58,28 +44,66 @@ namespace CalculadoraForms
                 throw new DivideByZeroException("No se puede dividir por cero.");
             }
         }
-        public double Potencia(double num1, double num2)
+        public decimal Potencia(decimal @base, decimal exponente)
         {
-                return Math.Pow(num1, num2);
+            // Si exponente es entero, calcular exactamente con decimal
+            if (decimal.Truncate(exponente) == exponente)
+            {
+                long exp;
+                try
+                {
+                    exp = (long)exponente;
+                }
+                catch
+                {
+                    throw new InvalidOperationException("Exponente entero demasiado grande.");
+                }
+
+                if (exp == 0) return 1m;
+                bool negativo = exp < 0;
+                exp = Math.Abs(exp);
+
+                decimal result = 1m;
+                decimal b = @base;
+                while (exp > 0)
+                {
+                    if ((exp & 1) == 1) result *= b;
+                    b *= b;
+                    exp >>= 1;
+                }
+
+                if (negativo)
+                {
+                    if (result == 0m) throw new DivideByZeroException("División por cero en potencia con exponente negativo.");
+                    return 1m / result;
+                }
+
+                return result;
+            }
+
+            // Para exponentes no enteros, usar Math.Pow como fallback (pierde parte de la precisión)
+            double dblBase = (double)@base;
+            double dblExp = (double)exponente;
+            double dblRes = Math.Pow(dblBase, dblExp);
+            return Convert.ToDecimal(dblRes);
         }
-        public double Raiz(double num1)
+        public decimal Raiz(decimal num1)
         {
-             if (num1 >= 0)
-             {
-                return Math.Sqrt(num1);
-             }
-             else
-             {
-                throw new ArgumentException("No se puede calcular la raíz cuadrada de un número negativo.");
-             }
+            if (num1 < 0m) throw new ArgumentException("No se puede calcular la raíz cuadrada de un número negativo.");
+            if (num1 == 0m) return 0m;
+
+            // Newton-Raphson para sqrt en decimal
+            decimal x0 = (decimal)Math.Sqrt((double)num1); // buena aproximación inicial
+            decimal tolerance = 1e-28m;
+            for (int i = 0; i < 100; i++)
+            {
+                decimal x1 = 0.5m * (x0 + num1 / x0);
+                if (Math.Abs((double)(x1 - x0)) < (double)tolerance) return x1;
+                x0 = x1;
+            }
+            return x0;
         }
-        public double Porcentaje(double num1, double num2)
-        {
-                return (num1 * num2) / 100;
-        }
-        public double InvertirSigno(double num1)
-        {
-                return -num1;
-        }
+        public decimal Porcentaje(decimal num1, decimal num2) => (num1 * num2) / 100m;
+        public decimal InvertirSigno(decimal num1) => -num1;
     }
 }
