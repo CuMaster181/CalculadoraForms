@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Windows.Forms;
 
@@ -70,12 +70,14 @@ namespace CalculadoraForms
 
                 operador = btn.Text switch
                 {
-                    "�" => "/",
-                    "�" => "*",
-                    "?" => "-",
+                    "÷" => "/",
+                    "×" => "*",
+                    "−" => "-",
                     "+" => "+",
                     _ => btn.Text
                 };
+
+                lblOperation.Text = $"{firstNumber} {btn.Text}";
 
                 nuevaEntrada = true;
             }
@@ -106,18 +108,19 @@ namespace CalculadoraForms
                     result = RealizarOperacion((decimal)firstNumber, secondNumber, operador);
                 }
 
-                string entry = $"{firstNumber} {operador} {secondNumber} = {result}";
+                string entry = $"{firstNumber} {(operador == "pow" ? "xʸ" : operador)} {secondNumber} = {result}";
                 historial.AgregarOperacion(entry);
                 lstHistory.Items.Insert(0, entry);
 
                 txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
                 firstNumber = null;
                 operador = "";
+                lblOperation.Text = "";
                 nuevaEntrada = true;
             }
             catch (DivideByZeroException dbz)
             {
-                MessageBox.Show(dbz.Message, "Divisi�n por cero", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(dbz.Message, "División por cero", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 ResetCalculator();
             }
             catch (Exception ex)
@@ -140,7 +143,7 @@ namespace CalculadoraForms
             };
         }
 
-        // Ahora BtnClear borra un car�cter a la vez; si ya est� en nueva entrada o es "0" hace reset completo.
+        // Ahora BtnClear borra un carácter a la vez; si ya está en nueva entrada o es "0" hace reset completo.
         private void BtnClear_Click(object sender, EventArgs e)
         {
             if (nuevaEntrada || txtDisplay.Text == "0")
@@ -151,7 +154,7 @@ namespace CalculadoraForms
 
             string text = txtDisplay.Text;
 
-            // Si s�lo queda un car�cter, volvemos a "0"
+            // Si sólo queda un carácter, volvemos a "0"
             if (text.Length <= 1)
             {
                 txtDisplay.Text = "0";
@@ -159,10 +162,10 @@ namespace CalculadoraForms
                 return;
             }
 
-            // Eliminar �ltimo car�cter
+            // Eliminar último carácter
             text = text[..^1];
 
-            // Si queda s�lo un signo negativo o vac�o, mostrar "0"
+            // Si queda sólo un signo negativo o vacío, mostrar "0"
             if (string.IsNullOrEmpty(text) || text == "-" )
             {
                 txtDisplay.Text = "0";
@@ -178,6 +181,7 @@ namespace CalculadoraForms
             txtDisplay.Text = "0";
             firstNumber = null;
             operador = "";
+            lblOperation.Text = "";
             nuevaEntrada = true;
         }
 
@@ -192,21 +196,66 @@ namespace CalculadoraForms
 
         private void BtnPercent_Click(object sender, EventArgs e)
         {
-            if (firstNumber != null && decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal value))
+            // Comportamiento:
+            // - Si no hay primer operando => divide el valor actual entre 100 (10% -> 0.1)
+            // - Si hay primer operando:
+            //     * Para + y - : el segundo operando se interpreta como porcentaje del primero (A + B% => B = A * B / 100)
+            //     * Para * y / : el segundo operando se interpreta como valor/100 (A * B% => A * (B/100))
+            // Se actualiza la pantalla con el valor convertido y se añade entrada al historial.
+            if (!decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal value))
+                return;
+
+            decimal percentValue;
+            string entry;
+
+            if (firstNumber != null && !string.IsNullOrEmpty(operador))
             {
-                decimal result = calculadora.Porcentaje((decimal)firstNumber, value);
-                txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
-                string entry = $"{firstNumber} % {value} = {result}";
-                historial.AgregarOperacion(entry);
-                lstHistory.Items.Insert(0, entry);
-                nuevaEntrada = true;
+                // operador esperado: "+", "-", "*", "/", "pow"
+                if (operador == "+" || operador == "-")
+                {
+                    // porcentaje relativo al primer número
+                    percentValue = calculadora.Porcentaje((decimal)firstNumber, value); // first * value / 100
+                    txtDisplay.Text = percentValue.ToString(CultureInfo.CurrentCulture);
+                    lblOperation.Text = $"{firstNumber} {operador} {value}%";
+                    entry = $"{firstNumber} {operador} {value}% = {percentValue}";
+                }
+                else if (operador == "*" || operador == "/")
+                {
+                    // porcentaje como fracción (value/100)
+                    percentValue = calculadora.Porcentaje(value, 1m); // value / 100
+                    txtDisplay.Text = percentValue.ToString(CultureInfo.CurrentCulture);
+                    lblOperation.Text = $"{firstNumber} {operador} {value}%";
+                    entry = $"{firstNumber} {operador} {value}% -> {percentValue}";
+                }
+                else if (operador == "pow")
+                {
+                    // Para potencia no tiene sentido porcentaje relativo; tratamos como value/100
+                    percentValue = calculadora.Porcentaje(value, 1m);
+                    txtDisplay.Text = percentValue.ToString(CultureInfo.CurrentCulture);
+                    lblOperation.Text = $"{firstNumber} xʸ {value}%";
+                    entry = $"{firstNumber} xʸ {value}% -> {percentValue}";
+                }
+                else
+                {
+                    // fallback: dividir entre 100
+                    percentValue = calculadora.Porcentaje(value, 1m);
+                    txtDisplay.Text = percentValue.ToString(CultureInfo.CurrentCulture);
+                    lblOperation.Text = $"{value}%";
+                    entry = $"{value}% = {percentValue}";
+                }
             }
-            else if (decimal.TryParse(txtDisplay.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal single))
+            else
             {
-                decimal result = calculadora.Porcentaje(single, 100m);
-                txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
-                nuevaEntrada = true;
+                // sin primer operando -> simple porcentaje (valor/100)
+                percentValue = calculadora.Porcentaje(value, 1m); // value / 100
+                txtDisplay.Text = percentValue.ToString(CultureInfo.CurrentCulture);
+                lblOperation.Text = $"{value}%";
+                entry = $"{value}% = {percentValue}";
             }
+
+            historial.AgregarOperacion(entry);
+            lstHistory.Items.Insert(0, entry);
+            nuevaEntrada = true;
         }
 
         private void BtnSqrt_Click(object sender, EventArgs e)
@@ -216,10 +265,11 @@ namespace CalculadoraForms
                 try
                 {
                     decimal result = calculadora.Raiz(value);
-                    string entry = $"?({value}) = {result}";
+                    string entry = $"√({value}) = {result}";
                     historial.AgregarOperacion(entry);
                     lstHistory.Items.Insert(0, entry);
                     txtDisplay.Text = result.ToString(CultureInfo.CurrentCulture);
+                    lblOperation.Text = ""; // limpiar etiqueta en operación unaria
                     nuevaEntrada = true;
                 }
                 catch (Exception ex)
@@ -235,6 +285,7 @@ namespace CalculadoraForms
             {
                 firstNumber = value;
                 operador = "pow";
+                lblOperation.Text = $"{firstNumber} xʸ";
                 nuevaEntrada = true;
             }
         }

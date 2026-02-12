@@ -105,5 +105,6 @@ namespace CalculadoraForms
         }
         public decimal Porcentaje(decimal num1, decimal num2) => (num1 * num2) / 100m;
         public decimal InvertirSigno(decimal num1) => -num1;
+
     }
 }
