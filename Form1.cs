@@ -140,7 +140,38 @@ namespace CalculadoraForms
             };
         }
 
-        private void BtnClear_Click(object sender, EventArgs e) => ResetCalculator();
+        // Ahora BtnClear borra un carácter a la vez; si ya está en nueva entrada o es "0" hace reset completo.
+        private void BtnClear_Click(object sender, EventArgs e)
+        {
+            if (nuevaEntrada || txtDisplay.Text == "0")
+            {
+                ResetCalculator();
+                return;
+            }
+
+            string text = txtDisplay.Text;
+
+            // Si sólo queda un carácter, volvemos a "0"
+            if (text.Length <= 1)
+            {
+                txtDisplay.Text = "0";
+                nuevaEntrada = true;
+                return;
+            }
+
+            // Eliminar último carácter
+            text = text[..^1];
+
+            // Si queda sólo un signo negativo o vacío, mostrar "0"
+            if (string.IsNullOrEmpty(text) || text == "-" )
+            {
+                txtDisplay.Text = "0";
+            }
+            else
+            {
+                txtDisplay.Text = text;
+            }
+        }
 
         private void ResetCalculator()
         {
